@@ -1,0 +1,201 @@
+#include <stdio.h>
+#include <string.h>
+
+#define MAX_GRID 30
+#define MAX_SLOTS 100
+#define MAX_WORD 15
+#define NEW_LINE_MARGIN 1
+
+typedef struct{ //define a type for slot
+    int row;
+    int column;
+    int length;
+    char direction; // 'V' - vertical or 'H' - horizontal.
+}Slot;
+typedef struct{ //define a type for word
+    char word[MAX_WORD + NEW_LINE_MARGIN];
+    int length;
+    int index;
+    int placed; //this will determine whether a word has been placed(1) in the crossword or not (default - 0)
+}Word;
+
+
+
+
+void task5CrosswordGenerator()
+{
+    char grid[MAX_GRID][MAX_GRID];
+    int n; //dimensions of the grid.
+    int slots; //number of slots the crossword should contain.
+    int wordsNum = 0; //number of words in the dictionary.
+    printf("Please enter the dimensions of the crossword grid: \n");
+    scanf("%d", &n);
+    printf("Please enter the number of slots in the crossword: \n");
+    scanf("%d", &slots);
+    Slot slotArr[MAX_SLOTS] = {0};
+    printf("Please enter the details for each slot (Row, Column, Length, Direction):\n");
+    //initiate the values to the slot array.
+    for (int i = 0; i < slots; i++) {
+        scanf(" %d %d %d %c", &slotArr[i].row, &slotArr[i].column, &slotArr[i].length, &slotArr[i].direction);
+    }
+    printf("Please enter the number of words in the dictionary:\n");
+    while (wordsNum < slots) {
+        scanf("%d", &wordsNum);
+        if (wordsNum < slots)
+            printf("The dictionary must contain at least %d words. Please enter a valid dictionary size:\n", slots);
+    }
+    Word words[MAX_GRID * MAX_GRID] = {0}; //words array
+    printf("Please enter the words for the dictionary:\n");
+    for (int i = 0; i < wordsNum; i++) {
+        scanf(" %15s", words[i].word); // Ensure a space before %15s to skip leftover \n
+        words[i].length = (int)strlen(words[i].word);
+        words[i].index = i;
+        words[i].placed = 0;
+    }
+
+    initializeGrid(n, grid); //"create" the grid
+
+    //if the given data has a matching solvable crossword grid - print it. else - let the user know it is not solvable.
+    if(solveCrosswordRecursive(slotArr, words, slots, wordsNum, 0, 0, n, grid))
+        printGrid(n, grid);
+    else
+        printf("This crossword cannot be solved.\n");
+}
+
+//this function initialize the grid with empty cells ('#')
+void initializeGrid(int n, char grid[MAX_GRID][MAX_GRID])
+{
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            grid[i][j] = '#';
+        }
+    }
+}
+
+//this function checks whether a word can be placed in a certain slot.
+int canPlaceWord(Slot slot, Word word, char grid[MAX_GRID][MAX_GRID])
+{
+    if(word.length != slot.length)
+        return 0; //slot's length does not match the word's length therefore it cannot be placed there.
+    if(slot.direction == 'H') {
+        for(int i = 0; i < slot.length; i++) {
+            if(grid[slot.row][slot.column + i] != '#' && grid[slot.row][slot.column + i] != word.word[i])
+                return 0;
+        }
+    }
+    else if(slot.direction == 'V') {
+        for(int i = 0; i < slot.length; i++) {
+            if(grid[slot.row + i][slot.column] != '#' && grid[slot.row + i][slot.column] != word.word[i])
+                return 0;
+        }
+    }
+    return 1;
+}
+
+//this function places a word in the grid.
+void placeWord(Slot slot, Word word, char grid[MAX_GRID][MAX_GRID])
+{
+    if(slot.direction == 'H') {
+        for(int i = 0; i < slot.length; i++) {
+            grid[slot.row][slot.column + i] = word.word[i];
+        }
+    }
+    else if(slot.direction == 'V') {
+        for(int i = 0; i < slot.length; i++) {
+            grid[slot.row + i][slot.column] = word.word[i];
+        }
+    }
+}
+
+//this function removes a word from the grid.
+void removeWord(Slot slot, char grid[MAX_GRID][MAX_GRID])
+{
+    if(slot.direction == 'H') {
+        for(int i = 0; i < slot.length; i++) {
+            grid[slot.row][slot.column + i] = '#';
+        }
+    }
+    else if(slot.direction == 'V') {
+        for(int i = 0; i < slot.length; i++) {
+            grid[slot.row + i][slot.column] = '#';
+        }
+    }
+}
+
+/*int solveCrossword(Slot slots[MAX_SLOTS], Word words[MAX_GRID * MAX_GRID], int slotCount, int wordCount,
+    int currentSlot, int n, char grid[MAX_GRID][MAX_GRID])
+{
+    if (currentSlot == slotCount) {
+        return 1; // base case - if we filled all the slots correctly then the crossword is generated successfully.
+    }
+
+    Slot slot = slots[currentSlot];
+
+
+    for (int i = 0; i < wordCount; i++) {
+        if (!words[i].placed && canPlaceWord(slot, words[i], grid)) {
+            words[i].placed = 1;
+            placeWord(slot, words[i], grid);
+
+            if (solveCrossword(slots, words, slotCount, wordCount, currentSlot + 1, n, grid)) {
+                return 1; // Found a solution
+            }
+
+            // Backtrack
+            removeWord(slot, grid);
+            words[i].placed = 0;
+        }
+    }
+
+    return 0; // No solution found
+}*/
+
+// the following function prints the grid that its receiving.
+void printGrid(int n, char grid[MAX_GRID][MAX_GRID]) {
+    for(int i = 0; i < n; i++) {
+        printf("| ");
+        for(int j = 0; j < n; j++) {
+            printf("%c", grid[i][j]);
+            if(j < n - 1)
+                printf(" | ");
+        }
+        printf(" |");
+        printf("\n");
+    }
+}
+
+/*for each word in the dictionary we check if it fits the current slot and can be placed there, if so we place it
+     *and move on to next slot until we filled all the slots. if we could not fill them all we backtrack and remove
+     *the word we placed and try placing another word. that way we check all the possibilities of word placements.
+     *if we did not reach any solution we return 0;*/
+int solveCrosswordRecursive(Slot slots[], Word words[], int slotCount, int wordCount, int currentSlot, int currentWord,
+    int n, char grid[MAX_GRID][MAX_GRID])
+{
+    if (currentSlot == slotCount) {
+        return 1; // base case: all slots were filled and the crossword had been generated successfully
+    }
+
+    // Ff we have exhausted all words for the current slot, backtrack
+    if (currentWord == wordCount) {
+        return 0; // No solution found for the current slot
+    }
+
+    Slot slot = slots[currentSlot];
+
+    // try placing the current word
+    if (!words[currentWord].placed && canPlaceWord(slot, words[currentWord], grid)) {
+        words[currentWord].placed = 1;
+        placeWord(slot, words[currentWord], grid);
+
+        if (solveCrosswordRecursive(slots, words, slotCount, wordCount, currentSlot + 1, 0, n, grid)) {
+            return 1; // found a solution
+        }
+
+        // backtrack
+        removeWord(slot, grid);
+        words[currentWord].placed = 0;
+    }
+
+    // recur to try the next word
+    return solveCrosswordRecursive(slots, words, slotCount, wordCount, currentSlot, currentWord + 1, n, grid);
+}
